@@ -1,0 +1,156 @@
+{
+  "name": "fidelidade-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "13.4.7",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2",
+    "typescript": "^5.0.4"
+  }
+}
+module.exports = {
+  content: ['./pages/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+import '@/styles/globals.css'
+import type { AppProps } from 'next/app'
+
+export default function App({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />
+}
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+
+export default function Home() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/login');
+  }, []);
+  return null;
+}
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const router = useRouter();
+
+  const handleLogin = async () => {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha }),
+    });
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      router.push('/painel');
+    } else {
+      alert('Login inválido');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <h1 className="text-xl mb-4">Login Restaurante</h1>
+      <input
+        placeholder="Email"
+        className="mb-2 border p-2"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        placeholder="Senha"
+        type="password"
+        className="mb-2 border p-2"
+        value={senha}
+        onChange={(e) => setSenha(e.target.value)}
+      />
+      <button onClick={handleLogin} className="bg-blue-500 text-white px-4 py-2 rounded">
+        Entrar
+      </button>
+    </div>
+  );
+}
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+
+export default function Painel() {
+  const router = useRouter();
+  const [dados, setDados] = useState<any>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return router.push('/login');
+
+    fetch('/api/dashboard', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setDados(data))
+      .catch(() => router.push('/login'));
+  }, []);
+
+  if (!dados) return <p>Carregando...</p>;
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl mb-4">Painel do Restaurante</h1>
+      <p>Carimbos no mês: {dados.carimbos}</p>
+      <p>Prêmios resgatados: {dados.resgates}</p>
+      <p>Clientes únicos: {dados.clientes}</p>
+      <div className="mt-4">
+        <h2 className="text-lg">QR Code do restaurante:</h2>
+        <img src={dados.qrcode_url} alt="QR Code" className="w-40 h-40 mt-2" />
+      </div>
+    </div>
+  );
+}
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { email, senha } = req.body;
+  const validUser = email === 'restaurante@teste.com' && senha === '1234';
+  if (validUser) {
+    res.status(200).json({ token: 'fake-jwt-token' });
+  } else {
+    res.status(401).json({ erro: 'Credenciais inválidas' });
+  }
+}
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  const auth = req.headers.authorization;
+  if (auth !== 'Bearer fake-jwt-token') {
+    return res.status(401).json({ erro: 'Não autorizado' });
+  }
+  res.status(200).json({
+    carimbos: 42,
+    resgates: 8,
+    clientes: 27,
+    qrcode_url: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://app.com/carimbar?id=rest123',
+  });
+}@tailwind base;
+@tailwind components;
+@tailwind utilities;
